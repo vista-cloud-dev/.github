@@ -85,15 +85,15 @@ its four jobs (sync, parse, package, test), all of which act on the
 
 ```mermaid
 flowchart TB
-    user["🧑‍💻 Developer&nbsp;&nbsp;·&nbsp;&nbsp;🤖 AI agent"]
-    user --> mcli["⌨️ <b>m-cli</b> — the <code>m</code> busybox"]
+    user["Developer / AI agent"]
+    user --> mcli["<b>m-cli</b> — the <code>m</code> busybox"]
 
     mcli -->|m pull / push| irissync["irissync<br/>source sync"]
     mcli -->|parse tree| mparse["m-parse<br/>tree-sitter-m"]
     mcli -->|m kids| kidsvc["kids-vc<br/>KIDS packaging"]
     mcli -->|m test| stdlib["m-stdlib<br/>M runtime + tests"]
 
-    irissync --> vistairis["🗄️ <b>vista-iris</b><br/>VistA loaded into IRIS for Health"]
+    irissync --> vistairis["<b>vista-iris</b><br/>VistA loaded into IRIS for Health"]
     mparse --> vistairis
     kidsvc --> vistairis
     stdlib --> vistairis
@@ -118,11 +118,11 @@ through **vista-info-hub**.
 
 ```mermaid
 flowchart TB
-    user["🧑‍💻 Developer"]
-    user --> vscode["🧩 VS Code + M plugin<br/>syntax highlighting · LSP · go-to-definition"]
-    user --> hub["🔎 vista-info-hub<br/>CLI · TUI · web"]
+    user["Developer"]
+    user --> vscode["VS Code + M plugin<br/>syntax highlighting · LSP · go-to-definition"]
+    user --> hub["vista-info-hub<br/>CLI · TUI · web"]
 
-    vscode -->|"language intelligence · m lsp"| awareness["📚 VistA situational awareness<br/>routines · FileMan data dictionary · VA docs"]
+    vscode -->|"language intelligence · m lsp"| awareness["VistA situational awareness<br/>routines · FileMan data dictionary · VA docs"]
     hub -->|routine / file / risk queries| awareness
 ```
 
