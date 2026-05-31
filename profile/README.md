@@ -1,28 +1,259 @@
 # vista-cloud-dev
 
-Modernizing **VistA-M development on InterSystems IRIS** — a git-first dev
-bridge, a cross-engine `m` CLI / Go toolchain, and the VA modernization strategy
-that frames them.
+**Modernizing VistA-M development on InterSystems IRIS.**
+
+![License](https://img.shields.io/badge/license-Apache--2.0-blue)
+![Status](https://img.shields.io/badge/status-active%20development-orange)
+![Engines](https://img.shields.io/badge/engines-YottaDB%20%C2%B7%20IRIS-informational)
+![Built with](https://img.shields.io/badge/built%20with-Go%20%2B%20M-00ADD8)
+
+`vista-cloud-dev` is an ecosystem of small, composable tools that bring
+present-day software engineering — version control, unit testing, linting,
+formatting, an IDE language server, and AI-agent surfaces — to **VistA**, the
+US Department of Veterans Affairs' electronic health record, written in **M
+(MUMPS)** and increasingly hosted on **InterSystems IRIS for Health**.
+
+It is **built for VistA / IRIS / YottaDB developers and open to the
+community.** The work is under active development — interfaces are stabilizing
+but not yet at a tagged stable release.
+
+The guiding principle is simple:
+
+> **Git is the source of truth; the database is just the engine.**
+
+You write `.m` files in git, sync them into a running IRIS (or YottaDB)
+instance, test against the live engine, and pull changes back — instead of
+treating the database as the place source code "lives."
 
 ## Start here
 
-- **[workspace](https://github.com/vista-cloud-dev/workspace)** — coordination
-  hub: clone-all manifest, new-machine bootstrap, multi-repo sync helper.
-- **[docs](https://github.com/vista-cloud-dev/docs)** — the design/strategy
-  corpus (specs, ADRs, dependency maps), validated in CI.
+- **New here?** Read **[docs](https://github.com/vista-cloud-dev/docs)** — the
+  modernization strategy, the `m-cli` spec, and the toolchain dependency map
+  (the *why* behind everything below).
+- **Setting up a machine?** Clone the org via
+  **[workspace](https://github.com/vista-cloud-dev/workspace)** —
+  `./bootstrap.sh` clones every repo and checks out the right branches.
+- **Want the tool?** **[m-cli](https://github.com/vista-cloud-dev/m-cli)** is
+  the `m` command; its README has install + first-run instructions.
+- **Want to help?** See [Contributing](#contributing).
 
-## Repos
+---
 
-| Repo | What it is |
-|------|------------|
-| [docs](https://github.com/vista-cloud-dev/docs) | Design/strategy corpus. |
-| [doc-framework](https://github.com/vista-cloud-dev/doc-framework) | Doc-corpus standard + validator. |
-| [go-cli-template](https://github.com/vista-cloud-dev/go-cli-template) | Shared Go CLI scaffold. |
-| [irissync](https://github.com/vista-cloud-dev/irissync) | IRIS source-sync binary — owner of the IRIS source boundary. |
-| [vista-iris](https://github.com/vista-cloud-dev/vista-iris) | VistA-on-IRIS container build. |
-| [workspace](https://github.com/vista-cloud-dev/workspace) | Cross-repo scripts + manifest. |
+## Table of contents
+
+- [Why this exists](#why-this-exists)
+- [Architecture at a glance](#architecture-at-a-glance)
+- [The components](#the-components)
+  - [Strategy & documentation](#strategy--documentation)
+  - [The M toolchain (host-side, Go)](#the-m-toolchain-host-side-go)
+  - [The IRIS / VistA source bridge](#the-iris--vista-source-bridge)
+  - [The M runtime library](#the-m-runtime-library)
+  - [Agent & intelligence surfaces](#agent--intelligence-surfaces)
+  - [Coordination & scaffolding](#coordination--scaffolding)
+- [The `m` command surface](#the-m-command-surface)
+- [Design principles](#design-principles)
+- [Contributing](#contributing)
+- [Shared CI](#shared-ci)
+
+---
+
+## Why this exists
+
+VistA is one of the largest and longest-lived production codebases in the
+world, but M development has historically lacked the everyday tooling other
+ecosystems take for granted. VA's migration of VistA onto IRIS — inside the
+FedRAMP-HIGH VA Enterprise Cloud (AWS GovCloud) — is an opportunity to close
+that gap. `vista-cloud-dev` supplies four things M developers don't have today:
+
+| Gap | What we provide |
+|-----|-----------------|
+| **Version control** | Materialize routines out of IRIS into a git-friendly mirror, edit as `.m`, push back. |
+| **Modern testing** | Assertion-based unit tests (`^STDASSERT`) run by `m test` against the live engine, with coverage. |
+| **M-aware IDE** | `m fmt`, `m lint`, and an LSP language server built on a real M parser. |
+| **A standard library** | `m-stdlib` — JSON, regex, UUIDs, crypto, CSV, dates, collections, and 25+ more, conformance-tested. |
+
+Everything is **engine-neutral** where it can be (works on YottaDB and IRIS)
+and **engine-specific** only where it must be (the IRIS source boundary).
+
+---
+
+## Architecture at a glance
+
+A developer (or an AI agent) drives the **`m`** command. `m` parses M with
+**m-parse**, dispatches database sync to **irissync** and KIDS packaging to
+**kids-vc**, and runs tests against a **vista-iris** container that has VistA
+loaded into IRIS. **m-stdlib** is the M runtime library those tests use;
+**m-dev-tools-mcp** and **vista-info-hub** expose the same surfaces to AI
+agents; **docs**, **go-cli-template**, and **workspace** are the foundations.
+
+```mermaid
+flowchart TB
+    dev["Developer / AI agent<br/>git · VS Code · terminal · Claude"]
+
+    subgraph toolchain["Host-side Go toolchain"]
+        mcli["<b>m-cli</b> — the <code>m</code> busybox<br/>fmt · lint · lsp · test · coverage · watch · schema"]
+        mparse["<b>m-parse</b><br/>tree-sitter-m via wazero (pure-Go WASM)"]
+        mcli -->|parse tree for fmt/lint/lsp| mparse
+    end
+
+    mcp["<b>m-dev-tools-mcp</b><br/>MCP server"]
+    dev -->|text / json| mcli
+    dev -->|MCP / JSON-RPC| mcp
+    mcp -.->|introspects m schema| mcli
+
+    irissync["<b>irissync</b><br/>IRIS source boundary<br/>(sole DB writer)"]
+    kidsvc["<b>kids-vc</b><br/>KIDS round-trip<br/>+ PHI/PII lint gate"]
+    mcli -->|m pull / push| irissync
+    mcli -->|m kids …| kidsvc
+
+    vistairis["<b>vista-iris</b><br/>VistA loaded into IRIS for Health<br/>(reproducible dev container)"]
+    irissync <-->|Atelier REST| vistairis
+    kidsvc -->|install / verify| vistairis
+
+    stdlib["<b>m-stdlib</b><br/>pure-M runtime library<br/>(32 STD* modules)"]
+    hub["<b>vista-info-hub</b><br/>VistA introspection<br/>CLI · MCP · REST · web · TUI"]
+    stdlib -->|loaded & tested via m test| vistairis
+    hub -->|reads code + data-dictionary facts| vistairis
+
+    subgraph foundations["Foundations"]
+        docs["<b>docs</b><br/>strategy · specs · ADRs"]
+        tmpl["<b>go-cli-template</b><br/>shared clikit grammar"]
+        ws["<b>workspace</b><br/>manifest · bootstrap · sync"]
+    end
+```
+
+**Key invariants**
+
+- **Single writer** — `irissync push` is the *only* thing that writes routines
+  back into IRIS; everything else (list/pull/status/verify) is read-only by
+  construction.
+- **Single parser** — `m-parse` is the one M parse engine; `fmt`, `lint`, and
+  `lsp` all sit on it. It runs the `tree-sitter-m` grammar as WASM through
+  `wazero`, so the whole toolchain stays a static binary with **no CGO**.
+- **One command grammar** — every Go binary builds on `go-cli-template`'s
+  `clikit`, so they share an identical output contract (`text` | `json` |
+  `auto`), error model, and exit-code ladder. `m` aggregates them all via
+  `m schema`, which is exactly what `m-dev-tools-mcp` reflects to agents.
+
+---
+
+## The components
+
+### Strategy & documentation
+
+| Repo | Role |
+|------|------|
+| **[docs](https://github.com/vista-cloud-dev/docs)** | The living design/strategy corpus — the *why* and *how* of the whole effort: the modernization strategy, the `m-cli` spec, ADRs, the dev-bridge design, and the toolchain dependency map. |
+| **[doc-framework](https://github.com/vista-cloud-dev/doc-framework)** | A portable documentation standard + zero-dependency Python validator. Defines eight document types (spec, adr, investigation, research, plan, guide, log, map), enforces frontmatter, cross-references, and supersession in CI. |
+
+### The M toolchain (host-side, Go)
+
+| Repo | Role |
+|------|------|
+| **[m-cli](https://github.com/vista-cloud-dev/m-cli)** | The `m` busybox — one static Go binary that fronts the whole toolchain. Native commands (`fmt`, `lint`, `lsp`, `test`, `coverage`, `watch`) plus dispatched sibling namespaces (`m pull/push/…` → irissync, `m kids …` → kids-vc). Cross-engine: YottaDB **and** IRIS. |
+| **[m-parse](https://github.com/vista-cloud-dev/m-parse)** | The engine-neutral M parse substrate. Embeds the `tree-sitter-m` grammar as WASM and runs it through `wazero` (pure-Go) so the toolchain has zero C dependencies at runtime. Powers `fmt`/`lint`/`lsp`. |
+| **[go-cli-template](https://github.com/vista-cloud-dev/go-cli-template)** | The shared Go CLI scaffold (`clikit`): a consistent command grammar, `--output text\|json\|auto`, deterministic exit codes (0 ok · 1 runtime · 2 usage · 3 check · 4 refused), TTY-gated styling, and a reflected `schema` contract. Every binary in the org inherits it. |
+
+### The IRIS / VistA source bridge
+
+| Repo | Role |
+|------|------|
+| **[irissync](https://github.com/vista-cloud-dev/irissync)** | Owner of the IRIS source boundary, in both directions. Materializes routines from an IRIS namespace into a git-friendly mirror + verifiable manifest (read side, safe by construction), and writes edited routines back (`push`, gated by single-writer locks + manifest conflict checks). Talks Atelier REST; enterprise auth (PIV/OIDC, mTLS). |
+| **[kids-vc](https://github.com/vista-cloud-dev/kids-vc)** | Version control for VistA **KIDS** distributions. Decomposes a monolithic `.KID` patch into a per-component tree you can diff and merge in git, and reassembles it byte-identically. Includes a PIKS data-class **lint gate** that refuses to package Patient/Institution-class FileMan data (PHI/PII guard). |
+| **[vista-iris](https://github.com/vista-cloud-dev/vista-iris)** | A reproducible **VistA-on-IRIS** container. The full site build (routine/global import + FileMan/Kernel install) is baked into the image, so it boots an already-loaded, operational instance — Management Portal, RPC Broker, HL7 MLLP, and Atelier REST for irissync to connect to. Ships **fictitious test data only**. |
+
+### The M runtime library
+
+| Repo | Role |
+|------|------|
+| **[m-stdlib](https://github.com/vista-cloud-dev/m-stdlib)** | A **pure-M standard library** — the batteries M never shipped. 32 conformance-tested modules: `STDJSON`, `STDREGEX`, `STDUUID`, `STDB64`/`STDHEX`, `STDCSV`, `STDDATE`, `STDLOG`, `STDARGS`, `STDCOLL`, `STDURL`, `STDFS`, plus the TDD primitives (`STDASSERT`, `STDFIX`, `STDMOCK`, `STDSEED`) that `m test` runs on, and optional callout-backed modules (`STDCRYPTO`, `STDCOMPRESS`, `STDHTTP`). Runs identically on YottaDB and IRIS. |
+
+### Agent & intelligence surfaces
+
+| Repo | Role |
+|------|------|
+| **[m-dev-tools-mcp](https://github.com/vista-cloud-dev/m-dev-tools-mcp)** | A thin **Model Context Protocol** server over the `m` toolchain. Reads `m schema`, exposes every command as an MCP tool, and forwards calls with `--output json` — so an AI agent drives `fmt`/`lint`/`test`/sync through one surface. Safety profiles (`default` / `safe` excludes `push` / `all`). |
+| **[vista-info-hub](https://github.com/vista-cloud-dev/vista-info-hub)** | A **VistA introspection engine** — one binary, many faces (CLI, MCP, REST, web UI, TUI) for querying the VistA code and data model plus the VA Document Library. `vista routine …`, `vista context …` (AI-ready markdown), `vista search …` (FTS5), `vista risk …`. A single operation registry projects to every interface. |
+
+![vista-info-hub demo](https://github.com/vista-cloud-dev/vista-info-hub/raw/master/demo/vista.gif)
+
+### Coordination & scaffolding
+
+| Repo | Role |
+|------|------|
+| **[workspace](https://github.com/vista-cloud-dev/workspace)** | The coordination hub: a clone-all manifest (`repos.txt`), an idempotent `bootstrap.sh` for new machines, and `git-update-repos` to fast-forward every repo. Start here on a fresh checkout. |
+
+---
+
+## The `m` command surface
+
+`m` is a busybox: native commands live in `m-cli`; sibling namespaces are
+dispatched to standalone binaries discovered at runtime (`$M_<NAME>_BIN`, then
+alongside `m`, then `$PATH`). Missing siblings degrade to stubs so the schema
+stays valid.
+
+```
+m fmt        AST-preserving formatter (shape-checked: parse(fmt(x)) == parse(x))
+m lint       query-driven rule engine over the parse tree
+m lsp        M language server (LSP 3.x over stdio)
+m test       run *TST.m suites via the engine, ^STDASSERT, TAP/JUnit output
+m coverage   line + branch coverage → LCOV
+m watch      re-run lint/fmt (and tests) on change
+m schema     emit the aggregated command tree as JSON (agent discovery)
+
+m list|pull|status|verify|push        → irissync   (push is the sole DB writer)
+m kids decompose|assemble|roundtrip|lint|parse  → kids-vc
+```
+
+Install and first-run instructions live in the
+**[m-cli](https://github.com/vista-cloud-dev/m-cli)** README; machine setup and
+the end-to-end pull → edit → test → push workflow live in
+**[workspace](https://github.com/vista-cloud-dev/workspace)**.
+
+---
+
+## Design principles
+
+- **Git-canonical source.** The database is the engine, not the repository.
+- **Engine-neutral by default.** YottaDB and IRIS are both first-class; only
+  the IRIS source boundary (`irissync`) is engine-specific.
+- **Static, dependency-free binaries.** `CGO_ENABLED=0` everywhere — even the M
+  parser runs as WASM via `wazero`, so there is no libc/C toolchain at runtime.
+- **One contract, many surfaces.** A single command grammar (`clikit`) and a
+  reflected `schema` mean CLI flags, MCP tools, and JSON envelopes never drift.
+- **Safe by construction.** Read verbs can't mutate the database; the single
+  writer is locked and conflict-checked; KIDS packaging refuses PHI/PII.
+- **Conformance-tested.** `m-stdlib` modules ship with vendored RFC/NIST
+  corpuses and an ≥85% coverage gate per module.
+- **Machine-reviewable docs.** Every design doc is validated in CI by
+  `doc-framework`.
+
+---
+
+## Contributing
+
+Contributions are welcome. The org-wide guides live in this `.github` repo:
+
+- [Contributing guide](https://github.com/vista-cloud-dev/.github/blob/main/CONTRIBUTING.md)
+- [Code of Conduct](https://github.com/vista-cloud-dev/.github/blob/main/CODE_OF_CONDUCT.md)
+- [Security policy](https://github.com/vista-cloud-dev/.github/blob/main/SECURITY.md)
+
+The codebase is licensed under **Apache-2.0**, with two deliberately isolated
+exceptions (the MIT VS Code extensions and the AGPL-derived embedded grammar
+artifact in `m-parse`) — see
+[`NOTICE`](https://github.com/vista-cloud-dev/.github/blob/main/NOTICE).
+
+> **Not affiliated with or endorsed by the US Department of Veterans Affairs.**
+> "VistA" refers to the public-domain VA health information system. These tools
+> operate on VistA source and ship with **fictitious test data only** — never
+> load real patient (PHI/PII) data into instances used with them.
+
+---
 
 ## Shared CI
 
 Go repos call the reusable workflow in this repo:
-`uses: vista-cloud-dev/.github/.github/workflows/go-ci.yml@main`.
+
+```yaml
+uses: vista-cloud-dev/.github/.github/workflows/go-ci.yml@main
+```

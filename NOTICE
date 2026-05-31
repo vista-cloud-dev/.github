@@ -1,0 +1,21 @@
+vista-cloud-dev
+Copyright 2026 vista-cloud-dev contributors
+
+This product and the repositories of the vista-cloud-dev organization are
+licensed under the Apache License, Version 2.0 (see LICENSE), with the
+following deliberate, isolated exceptions:
+
+  - VS Code extensions in the toolchain are licensed under MIT (per-tier
+    license split; see docs: host-side-go-toolchain-adr.md §3.2).
+
+  - The m-parse repository embeds a single committed artifact,
+    parse/tree-sitter-m.wasm, which is built from the tree-sitter-m grammar
+    (currently AGPL-3.0) plus the tree-sitter runtime (MIT). That one embedded
+    WASM artifact is therefore presently AGPL-derived. The AGPL obligation is
+    confined to that artifact only: all Go source in m-parse (the parse
+    package, the CLI, clikit, wasm/shim.c) is Apache-2.0. See
+    m-parse/NOTICE and m-parse/wasm/VENDOR.md for full provenance.
+
+Licensing reconciliation of the embedded grammar is deferred to project
+completion (project policy); the intended end-state is Apache-2.0 for every
+artifact except the VS Code extensions (MIT).
