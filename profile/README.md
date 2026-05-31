@@ -88,8 +88,12 @@ Each gap above, as a flow.
 
 ### 1 · Version control
 
-`m pull` / `m push` round-trips M code between IRIS and `.m` files on the
-filesystem, which version-control through GitHub like any other code.
+Two things get version-controlled: individual **routines** and whole **KIDS
+patches**.
+
+**Routines** — `m pull` / `m push` round-trips M code between IRIS and `.m`
+files on the filesystem, which version-control through GitHub like any other
+code.
 
 ```mermaid
 flowchart LR
@@ -98,6 +102,24 @@ flowchart LR
     gh["GitHub"]
     iris <-->|m pull / m push| fs
     fs <-->|git pull / push| gh
+```
+
+**Patches** — `kids-vc` decomposes a monolithic `.KID` patch into its
+components (routines, FileMan data dictionaries, …) so they can be diffed and
+stored in GitHub, and assembles them back into an installable `.KID` that is
+pushed into IRIS.
+
+```mermaid
+flowchart LR
+    gh["GitHub<br/>disassembled components"]
+    comps["patch components<br/>routines · FileMan DDs · …"]
+    kid[".KID patch<br/>(assembled)"]
+    iris[("IRIS<br/>VistA database")]
+
+    gh <-->|git pull / push| comps
+    kid -->|m kids decompose| comps
+    comps -->|m kids assemble| kid
+    kid -->|install| iris
 ```
 
 ### 2 · Modern testing
