@@ -97,8 +97,8 @@ code.
 
 ```mermaid
 flowchart LR
-    gh["GitHub"]
-    fs["m routines on filesystem<br/>.m files"]
+    gh["GitHub (code source control)"]
+    fs["m routines (.m files)"]
     iris[("IRIS<br/>VistA database")]
     gh <-->|git pull / push| fs
     fs <-->|m pull / m push| iris
@@ -111,7 +111,7 @@ pushed into IRIS.
 
 ```mermaid
 flowchart LR
-    gh["GitHub<br/>disassembled components"]
+    gh["GitHub (patch source control)"]
     comps["patch components<br/>routines · FileMan DDs · …"]
     kid[".KID patch<br/>(assembled)"]
     iris[("IRIS<br/>VistA database")]
