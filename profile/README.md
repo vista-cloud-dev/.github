@@ -97,11 +97,11 @@ code.
 
 ```mermaid
 flowchart LR
-    iris[("IRIS<br/>VistA database")]
-    fs["m routines on filesystem<br/>.m files"]
     gh["GitHub"]
-    iris <-->|m pull / m push| fs
-    fs <-->|git pull / push| gh
+    fs["m routines on filesystem<br/>.m files"]
+    iris[("IRIS<br/>VistA database")]
+    gh <-->|git pull / push| fs
+    fs <-->|m pull / m push| iris
 ```
 
 **Patches** — `kids-vc` decomposes a monolithic `.KID` patch into its
