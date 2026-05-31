@@ -79,37 +79,52 @@ and **engine-specific** only where it must be (the IRIS source boundary).
 
 ## Architecture at a glance
 
-Code and data flow strictly top-to-bottom. A developer (or an AI agent) drives
-the **`m`** command — directly, or through the **m-dev-tools-mcp** server.
-`m` parses M with **m-parse**, dispatches database sync to **irissync**, KIDS
-packaging to **kids-vc**, and tests against **m-stdlib**. All of those land in
-**vista-iris** — a container with VistA loaded into IRIS — at the bottom of the
-flow. **vista-info-hub** is a parallel read surface that queries the same code
-and data model.
+A developer or AI agent drives **`m`** — the centerpiece — which fans out to
+its four jobs (sync, parse, package, test), all of which act on the
+**vista-iris** instance at the bottom.
 
 ```mermaid
 flowchart TB
-    dev["Developer / AI agent<br/>git · VS Code · terminal · Claude"]
+    user["🧑‍💻 Developer&nbsp;&nbsp;·&nbsp;&nbsp;🤖 AI agent"]
+    user --> mcli["⌨️ <b>m-cli</b> — the <code>m</code> busybox"]
 
-    dev -->|MCP / JSON-RPC| mcp["m-dev-tools-mcp<br/>MCP server — wraps m schema"]
-    dev -->|text / json| mcli
-    dev -->|introspection queries| hub["vista-info-hub<br/>CLI · MCP · REST · web · TUI"]
-    mcp -->|m commands| mcli["m-cli — the m busybox<br/>fmt · lint · lsp · test · coverage · watch · schema"]
+    mcli -->|m pull / push| irissync["irissync<br/>source sync"]
+    mcli -->|parse tree| mparse["m-parse<br/>tree-sitter-m"]
+    mcli -->|m kids| kidsvc["kids-vc<br/>KIDS packaging"]
+    mcli -->|m test| stdlib["m-stdlib<br/>M runtime + tests"]
 
-    mcli -->|parse tree| mparse["m-parse<br/>tree-sitter-m via wazero — pure-Go WASM"]
-    mcli -->|m pull / push| irissync["irissync<br/>IRIS source boundary — sole DB writer"]
-    mcli -->|m kids …| kidsvc["kids-vc<br/>KIDS round-trip + PHI/PII gate"]
-    mcli -->|m test| stdlib["m-stdlib<br/>pure-M runtime library — 32 STD* modules"]
+    irissync --> vistairis["🗄️ <b>vista-iris</b><br/>VistA loaded into IRIS for Health"]
+    mparse --> vistairis
+    kidsvc --> vistairis
+    stdlib --> vistairis
 
-    irissync -->|Atelier REST · pull / push| vistairis["vista-iris<br/>VistA loaded into IRIS for Health<br/>reproducible dev container"]
-    kidsvc -->|install / verify| vistairis
-    stdlib -->|loaded into engine| vistairis
-    hub -->|reads code + data-dictionary facts| vistairis
+    classDef center fill:#00ADD8,stroke:#024,stroke-width:2px,color:#fff;
+    classDef engine fill:#1f2937,stroke:#111,color:#fff;
+    class mcli center;
+    class vistairis engine;
 ```
 
-> Underpinning the whole stack (outside the runtime data flow): **docs**
-> (strategy/specs), **go-cli-template** (the shared `clikit` CLI grammar every
-> binary inherits), and **workspace** (the clone-all manifest + bootstrap).
+> Driven directly from a terminal, or by an AI agent through the
+> **m-dev-tools-mcp** server (which exposes every `m` command as an MCP tool).
+> Underpinning the whole stack: **docs** (strategy/specs), **go-cli-template**
+> (the shared `clikit` CLI grammar every binary inherits), and **workspace**
+> (the clone-all manifest + bootstrap).
+
+### Situational awareness
+
+A second, read-only track helps you *understand* the VistA codebase while you
+work in it — M-aware editing in VS Code, and code/data-model/docs lookups
+through **vista-info-hub**.
+
+```mermaid
+flowchart TB
+    user["🧑‍💻 Developer"]
+    user --> vscode["🧩 VS Code + M plugin<br/>syntax highlighting · LSP · go-to-definition"]
+    user --> hub["🔎 vista-info-hub<br/>CLI · TUI · web"]
+
+    vscode -->|"language intelligence · m lsp"| awareness["📚 VistA situational awareness<br/>routines · FileMan data dictionary · VA docs"]
+    hub -->|routine / file / risk queries| awareness
+```
 
 **Key invariants**
 
