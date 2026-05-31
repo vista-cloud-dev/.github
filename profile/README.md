@@ -42,6 +42,11 @@ treating the database as the place source code "lives."
 ## Table of contents
 
 - [Why this exists](#why-this-exists)
+- [The four capabilities](#the-four-capabilities)
+  - [1 · Version control](#1--version-control)
+  - [2 · Modern testing](#2--modern-testing)
+  - [3 · M-aware IDE](#3--m-aware-ide)
+  - [4 · The standard library](#4--the-standard-library)
 - [Architecture at a glance](#architecture-at-a-glance)
 - [The components](#the-components)
   - [Strategy & documentation](#strategy--documentation)
@@ -74,6 +79,72 @@ that gap. `vista-cloud-dev` supplies four things M developers don't have today:
 
 Everything is **engine-neutral** where it can be (works on YottaDB and IRIS)
 and **engine-specific** only where it must be (the IRIS source boundary).
+
+---
+
+## The four capabilities
+
+Each gap above, as a flow.
+
+### 1 · Version control
+
+Routines live in the database; we materialize them into git, edit and review
+as `.m` files, and push the reviewed change back through the single writer.
+
+```mermaid
+flowchart LR
+    iris[("IRIS namespace<br/>routines live in the DB")]
+    git["git working tree<br/>.m files + manifest"]
+    iris -->|m pull| git
+    git -->|commit · branch · diff · review| git
+    git -->|"m push · single-writer, conflict-checked"| iris
+```
+
+### 2 · Modern testing
+
+Write a `*TST.m` suite first, run it with `m test` against the live engine via
+`^STDASSERT`, and get machine-readable results plus coverage.
+
+```mermaid
+flowchart TB
+    tst["*TST.m suite<br/>(written test-first)"]
+    tst -->|m test| runner["m test runner"]
+    runner -->|executes on| engine[("YottaDB / IRIS engine")]
+    engine -->|"^STDASSERT pass / fail"| report["TAP / JUnit report"]
+    runner -->|m coverage| cov["LCOV coverage<br/>≥85% gate"]
+```
+
+### 3 · M-aware IDE
+
+One parser feeds every editor feature: format, lint, and the language server
+all sit on the `m-parse` syntax tree.
+
+```mermaid
+flowchart TB
+    src[".m source"]
+    src --> mparse["m-parse<br/>tree-sitter-m → syntax tree"]
+    mparse --> fmt["m fmt<br/>AST-preserving format"]
+    mparse --> lint["m lint<br/>rule engine"]
+    mparse --> lsp["m lsp<br/>highlight · go-to-def · diagnostics"]
+```
+
+### 4 · The standard library
+
+Your M code calls conformance-tested `STD*` modules instead of re-inventing
+per-site utilities — the same on YottaDB and IRIS.
+
+```mermaid
+flowchart TB
+    app["Your M routine<br/>do ^STDx(...)"]
+    app --> lib
+    subgraph lib["m-stdlib — pure-M · YottaDB &amp; IRIS"]
+        direction LR
+        fmt2["data formats<br/>STDJSON · STDREGEX · STDCSV"]
+        enc["encoding<br/>STDUUID · STDB64 · STDHEX"]
+        test["testing<br/>STDASSERT · STDMOCK · STDFIX"]
+        util["utilities<br/>STDLOG · STDDATE · STDCOLL"]
+    end
+```
 
 ---
 
