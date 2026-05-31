@@ -88,16 +88,16 @@ Each gap above, as a flow.
 
 ### 1 · Version control
 
-Routines live in the database; we materialize them into git, edit and review
-as `.m` files, and push the reviewed change back through the single writer.
+`m pull` / `m push` round-trips M code between IRIS and `.m` files on the
+filesystem, which version-control through GitHub like any other code.
 
 ```mermaid
 flowchart LR
-    iris[("IRIS namespace<br/>routines live in the DB")]
-    git["git working tree<br/>.m files + manifest"]
-    iris -->|m pull| git
-    git -->|commit · branch · diff · review| git
-    git -->|"m push · single-writer, conflict-checked"| iris
+    iris[("IRIS<br/>VistA database")]
+    fs["m routines on filesystem<br/>.m files"]
+    gh["GitHub"]
+    iris <-->|m pull / m push| fs
+    fs <-->|git pull / push| gh
 ```
 
 ### 2 · Modern testing
