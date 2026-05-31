@@ -79,48 +79,37 @@ and **engine-specific** only where it must be (the IRIS source boundary).
 
 ## Architecture at a glance
 
-A developer (or an AI agent) drives the **`m`** command. `m` parses M with
-**m-parse**, dispatches database sync to **irissync** and KIDS packaging to
-**kids-vc**, and runs tests against a **vista-iris** container that has VistA
-loaded into IRIS. **m-stdlib** is the M runtime library those tests use;
-**m-dev-tools-mcp** and **vista-info-hub** expose the same surfaces to AI
-agents; **docs**, **go-cli-template**, and **workspace** are the foundations.
+Code and data flow strictly top-to-bottom. A developer (or an AI agent) drives
+the **`m`** command — directly, or through the **m-dev-tools-mcp** server.
+`m` parses M with **m-parse**, dispatches database sync to **irissync**, KIDS
+packaging to **kids-vc**, and tests against **m-stdlib**. All of those land in
+**vista-iris** — a container with VistA loaded into IRIS — at the bottom of the
+flow. **vista-info-hub** is a parallel read surface that queries the same code
+and data model.
 
 ```mermaid
 flowchart TB
     dev["Developer / AI agent<br/>git · VS Code · terminal · Claude"]
 
-    subgraph toolchain["Host-side Go toolchain"]
-        mcli["<b>m-cli</b> — the <code>m</code> busybox<br/>fmt · lint · lsp · test · coverage · watch · schema"]
-        mparse["<b>m-parse</b><br/>tree-sitter-m via wazero (pure-Go WASM)"]
-        mcli -->|parse tree for fmt/lint/lsp| mparse
-    end
-
-    mcp["<b>m-dev-tools-mcp</b><br/>MCP server"]
+    dev -->|MCP / JSON-RPC| mcp["m-dev-tools-mcp<br/>MCP server — wraps m schema"]
     dev -->|text / json| mcli
-    dev -->|MCP / JSON-RPC| mcp
-    mcp -.->|introspects m schema| mcli
+    dev -->|introspection queries| hub["vista-info-hub<br/>CLI · MCP · REST · web · TUI"]
+    mcp -->|m commands| mcli["m-cli — the m busybox<br/>fmt · lint · lsp · test · coverage · watch · schema"]
 
-    irissync["<b>irissync</b><br/>IRIS source boundary<br/>(sole DB writer)"]
-    kidsvc["<b>kids-vc</b><br/>KIDS round-trip<br/>+ PHI/PII lint gate"]
-    mcli -->|m pull / push| irissync
-    mcli -->|m kids …| kidsvc
+    mcli -->|parse tree| mparse["m-parse<br/>tree-sitter-m via wazero — pure-Go WASM"]
+    mcli -->|m pull / push| irissync["irissync<br/>IRIS source boundary — sole DB writer"]
+    mcli -->|m kids …| kidsvc["kids-vc<br/>KIDS round-trip + PHI/PII gate"]
+    mcli -->|m test| stdlib["m-stdlib<br/>pure-M runtime library — 32 STD* modules"]
 
-    vistairis["<b>vista-iris</b><br/>VistA loaded into IRIS for Health<br/>(reproducible dev container)"]
-    irissync <-->|Atelier REST| vistairis
+    irissync -->|Atelier REST · pull / push| vistairis["vista-iris<br/>VistA loaded into IRIS for Health<br/>reproducible dev container"]
     kidsvc -->|install / verify| vistairis
-
-    stdlib["<b>m-stdlib</b><br/>pure-M runtime library<br/>(32 STD* modules)"]
-    hub["<b>vista-info-hub</b><br/>VistA introspection<br/>CLI · MCP · REST · web · TUI"]
-    stdlib -->|loaded & tested via m test| vistairis
+    stdlib -->|loaded into engine| vistairis
     hub -->|reads code + data-dictionary facts| vistairis
-
-    subgraph foundations["Foundations"]
-        docs["<b>docs</b><br/>strategy · specs · ADRs"]
-        tmpl["<b>go-cli-template</b><br/>shared clikit grammar"]
-        ws["<b>workspace</b><br/>manifest · bootstrap · sync"]
-    end
 ```
+
+> Underpinning the whole stack (outside the runtime data flow): **docs**
+> (strategy/specs), **go-cli-template** (the shared `clikit` CLI grammar every
+> binary inherits), and **workspace** (the clone-all manifest + bootstrap).
 
 **Key invariants**
 
