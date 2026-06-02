@@ -1,6 +1,6 @@
 # vista-cloud-dev
 
-**Modernizing VistA-M development on the VA's Health Cloud.**
+**Modernizing VistA development on the VA's Health Cloud.**
 
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 ![Status](https://img.shields.io/badge/status-active%20development-orange)
