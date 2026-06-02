@@ -10,8 +10,9 @@
 `vista-cloud-dev` is an ecosystem of small, composable tools that bring
 present-day software engineering — version control, unit testing, linting,
 formatting, an IDE language server, and AI-agent surfaces — to **VistA**, the
-US Department of Veterans Affairs' electronic health record, written in **M
-(MUMPS)** on the **InterSystems IRIS for Health** platform.
+US Department of Veterans Affairs' healthcare information system built on 
+**InterSystems IRIS for Health** and hosted on the federally-certified 
+**Amazon Web Services** cloud infrastructure.
 
 It is **built for VistA / IRIS / YottaDB developers and open to the
 community.** The work is under active development — interfaces are stabilizing
