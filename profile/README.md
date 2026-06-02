@@ -9,7 +9,7 @@
 
 `vista-cloud-dev` is an ecosystem of small, composable tools that bring present-day software engineering — version control, unit testing, linting, formatting, an IDE language server, and AI-agent surfaces — to **VistA**, the VA's cloud-based federal health information system.
 
-VistA is built on the **M application database** technology supported by **Intersystems IRIS** and is hosted on the federally-certified **Amazon Web Services** cloud (see: https://cloudvista.github.io)
+VistA is built on the **M application database** technology supported by **Intersystems IRIS** and is hosted on the federally-certified **Amazon Web Services** cloud (see: https://cloudvista.github.io).
 
 vista-cloud-dev is **built for both IRIS and YottaDB  M-developers and open to the community.** The work is under active development — interfaces are stabilizing but not yet at a tagged stable release.
 
