@@ -7,13 +7,11 @@
 ![Engines](https://img.shields.io/badge/engines-YottaDB%20%C2%B7%20IRIS-informational)
 ![Built with](https://img.shields.io/badge/built%20with-Go%20%2B%20M-00ADD8)
 
-`vista-cloud-dev` is an ecosystem of small, composable tools that bring present-day software engineering — version control, unit testing, linting, formatting, an IDE language server, and AI-agent surfaces — to **VistA**, the VA's cloud-based federal health information system.  The VA's VistA is built on **M application database** language provided by **Intersystems IRIS** and is hosted on the federally-certified **Amazon Web Services** cloud  ("Cloud VistA").
+`vista-cloud-dev` is an ecosystem of small, composable tools that bring present-day software engineering — version control, unit testing, linting, formatting, an IDE language server, and AI-agent surfaces — to **VistA**, the VA's cloud-based federal health information system.  
 
-https://cloudvista.github.io
+The VA's VistA is built on **M application database** language provided by **Intersystems IRIS** and is hosted on the federally-certified **Amazon Web Services** cloud. For more information on VA's VistA Health Cloud see: https://cloudvista.github.io
 
-vista-cloud-dev is **built for both IRIS and YottaDB developers and open to the
-community.** The work is under active development — interfaces are stabilizing
-but not yet at a tagged stable release.
+vista-cloud-dev is **built for both IRIS and YottaDB developers and open to the community.** The work is under active development — interfaces are stabilizing but not yet at a tagged stable release.
 
 The guiding principle is simple:
 
