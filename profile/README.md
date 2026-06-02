@@ -1,4 +1,4 @@
-# vista-cloud-dev
+# VistA Cloud Dev
 
 **Modernizing VistA development on the VA's Health Cloud.**
 
