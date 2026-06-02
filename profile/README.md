@@ -11,7 +11,7 @@
 present-day software engineering — version control, unit testing, linting,
 formatting, an IDE language server, and AI-agent surfaces — to **VistA**, the
 US Department of Veterans Affairs' electronic health record, written in **M
-(MUMPS)** and increasingly hosted on **InterSystems IRIS for Health**.
+(MUMPS)** on the **InterSystems IRIS for Health** platform.
 
 It is **built for VistA / IRIS / YottaDB developers and open to the
 community.** The work is under active development — interfaces are stabilizing
