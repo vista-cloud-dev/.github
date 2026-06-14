@@ -1,0 +1,58 @@
+# Reusable m/v waterline gate for vista-cloud-dev (ADR §3.3.2).
+#
+# Runs the shared G1 dependency-direction gate — `m arch check` — in any repo,
+# so the waterline (engine-neutral `m` must not depend on VistA-specific `v`)
+# is enforced by CI in every repo with no exception, not by review.
+#
+# Call it from a repo's ci.yml with one line:
+#
+#   jobs:
+#     arch:
+#       uses: vista-cloud-dev/.github/.github/workflows/arch-waterline.yml@main
+#
+# The gate is the actual `m` toolchain binary (ADR §3.3.1 — "one shared gate,
+# versioned with the toolchain"), built fresh from m-cli. The target repo must
+# declare its layer in a committed meta artifact (dist/repo.meta.json,
+# dist/v-contract.json, or root repo.meta.json); `m arch check` reads it and:
+#   - layer m + a go.mod  → fails if the Go dep closure contains any
+#                           github.com/vista-cloud-dev/v-* module
+#   - layer m + .m source → fails on any ^VSL* (v-layer) routine reference
+#   - layer v             → passes trivially (v -> m is allowed)
+# A violation exits 3 and fails the job.
+name: arch-waterline
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: Go toolchain version (to build `m` and resolve the target's deps).
+        type: string
+        default: "1.26.x"
+      m-cli-ref:
+        description: >-
+          Ref of vista-cloud-dev/m-cli to install `m` from. Must contain the
+          `m arch check` command. Pin to a tag once m-cli releases one.
+        type: string
+        default: "main"
+
+permissions:
+  contents: read
+
+jobs:
+  arch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          check-latest: true
+      - name: Install the m toolchain (the shared gate) from m-cli
+        # `m arch check` lives in the engine-neutral Go m-cli (binary `m-cli`).
+        # go install resolves a branch/tag/commit ref to a pseudo-version.
+        run: |
+          go install "github.com/vista-cloud-dev/m-cli@${{ inputs.m-cli-ref }}"
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Waterline G1 — m arch check
+        # Exit 3 (a crossed waterline) fails the job; clean is exit 0.
+        run: m-cli arch check .
